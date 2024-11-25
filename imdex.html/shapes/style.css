@@ -1,0 +1,28 @@
+*{
+    margin: 0%;
+    padding: 0%;
+}
+body{
+    background-color: darkgrey;
+
+}
+main{
+    display: flex;
+}
+html,body{
+    height: 100%;
+    width: 100%;
+}
+div{
+    height: 200px;
+    width: 200px;
+}
+#box1{
+    background-color: bisque;
+}
+#box2{
+    background-color: aqua;
+}
+#box3{
+    background-color: blueviolet;
+}
