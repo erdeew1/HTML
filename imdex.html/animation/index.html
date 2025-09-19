@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas>
+    precision highp float;
+    const float pi = 3.14159265359;
+    uniform float uTime;
+    uniform vec2 uResolution;
+
+    float rand(float seed) {
+        return fract(sin(seed) * 10000.);
+    }
+    float noise(vec2 p) {
+        return rand(p.x * 14. + p.y * sin(uTime / 1500000.) * .005);
+    }
+    float smoothNoise(vec2 p){
+        vec2 inter = smoothstep(0., 1., fract(p));
+        float s = mix(noise(vec2(floor(p.x), floor(p.y))), noise(vec2(ceil(p.x), floor(p.y))), inter.x);
+        float n = mix(noise(vec2(floor(p.x), ceil(p.y))), noise(vec2(ceil(p.x), ceil(p.y))), inter.x);
+        return mix(s, n, inter.y);
+    }
+    float fbm(in vec2 p) {
+        float z = 2.;
+        float rz = 0.;
+        for (float i = 1.; i < 6.; i++) {
+            rz += abs((smoothNoise(p) - .5) * 2.) / z;
+            z *= 2.;
+            p *= 2.;
+        }
+        return rz;
+    }
+
+    float circ(vec2 p){
+        float r = length(p);
+        r = log(sqrt(r));
+        return abs(mod(4.*r, pi*2.) - pi) * 3. + .2;
+    }
+
+    void main() {
+        vec2 p = gl_FragCoord.xy / uResolution.xy - 0.5;
+        p.x *= uResolution.x / uResolution.y;
+        float rz = fbm(p * 5.);
+        rz *= circ(p / exp(mod(uTime / 500., pi)));
+        gl_FragColor = vec4(vec3(.4, .3, .7) / rz, 1.);
+    }        
+</canvas>
+
+<script src="script.js"></script>
+</body>
+</html>

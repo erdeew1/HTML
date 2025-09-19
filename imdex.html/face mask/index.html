@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>three.js + Webcam + FaceMesh (Particles)</title>
+    <style>
+      body { margin: 0; overflow: hidden; background: #000; }
+      canvas { display: block; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'https://cdn.skypack.dev/three@0.136.0/build/three.module.js';
+      import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls.js';
+      import { EffectComposer } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/EffectComposer.js';
+      import { RenderPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/RenderPass.js';
+      import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+      import Stats from 'https://cdn.skypack.dev/stats.js';
+
+      let scene, camera, renderer, composer;
+      let bloomPass;
+      let particles;
+      let positions, colors, sizes;
+      let initialZPositions;
+      let video, videoCanvas, videoCtx;
+      let controls;
+      let cols = 80, rows = 60;
+
+      const params = {
+        bloomPass: {
+          strength: 0.5,
+          radius: 0.5,
+          threshold: 0.1,
+        },
+        spacing: 0.1,
+        baseParticleSize: 0.25,
+        brightnessMultiplier: 1.0,
+        showStats: false,
+        extrusionDirection: 1,
+        dampingFactor: 0.1,
+        maxExtrusionHeight: 5,
+        invertLightDepth: true,
+        fullscreen: () => {
+          if (!document.fullscreenElement) {
+            document.body.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+        },
+        randomize: () => {}  
+      };
+
+      const stats = new Stats();
+      stats.showPanel(0);
+      stats.dom.style.position = 'absolute';
+      stats.dom.style.top = '0px';
+      stats.dom.style.left = '0px';
+      stats.dom.style.display = params.showStats ? 'block' : 'none';
+      document.body.appendChild(stats.dom);
+
+      init();
+      animate();
+      function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, -1, 8);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.5;
+        controls.rotateSpeed = 0.5;
+        controls.zoomSpeed = 0.5;
+
+        const renderScene = new RenderPass(scene, camera);
+        bloomPass = new UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          params.bloomPass.strength,
+          params.bloomPass.radius,
+          params.bloomPass.threshold
+        );
+
+        composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+        
+        const light = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
+        scene.add(light);
+
+        video = document.createElement('video');
+        video.autoplay = true;
+        navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+          video.srcObject = stream;
+          initFaceTracking(video);
+        }).catch(error => {
+          console.error("Error accessing webcam:", error);
+          alert("Impossible d'accéder à la webcam. Assurez-vous d'avoir accordé la permission.");
+        });
+
+        videoCanvas = document.createElement('canvas');
+        videoCanvas.width = cols;
+        videoCanvas.height = rows;
+        videoCtx = videoCanvas.getContext('2d', { willReadFrequently: true });
+
+        const numParticles = cols * rows;
+        const geometry = new THREE.BufferGeometry();
+
+        positions = new Float32Array(numParticles * 3);
+        colors = new Float32Array(numParticles * 3);
+        sizes = new Float32Array(numParticles);
+        initialZPositions = new Float32Array(numParticles);
+
+        for (let i = 0; i < numParticles; i++) {
+          const x = i % cols;
+          const y = Math.floor(i / cols);
+
+          positions[i * 3 + 0] = (x - cols / 2) * params.spacing;
+          positions[i * 3 + 1] = (y - rows / 2) * params.spacing;
+          positions[i * 3 + 2] = 0;
+          initialZPositions[i] = 0;
+
+          colors[i * 3 + 0] = 1.0;
+          colors[i * 3 + 1] = 1.0;
+          colors[i * 3 + 2] = 1.0;
+
+          sizes[i] = params.baseParticleSize;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+
+        const material = new THREE.PointsMaterial({
+          vertexColors: true,
+          size: params.baseParticleSize,
+          sizeAttenuation: true
+        });
+
+        material.onBeforeCompile = (shader) => {
+          shader.vertexShader = 'attribute float aSize;\n' + shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace(
+            'gl_PointSize = size;',
+            'gl_PointSize = aSize * ( 1.0 / gl_Position.w );'
+          );
+          material.userData.shader = shader;
+        };
+
+        particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        const gui = new dat.GUI();
+        gui.close();
+                const bloomFolder = gui.addFolder('Bloom Pass');
+        bloomFolder
+          .add(params.bloomPass, 'strength', 0, 1)
+          .onChange((value) => (bloomPass.strength = value));
+        bloomFolder
+          .add(params.bloomPass, 'radius', 0, 1)
+          .onChange((value) => (bloomPass.radius = value));
+        bloomFolder
+          .add(params.bloomPass, 'threshold', 0, 1)
+          .onChange((value) => (bloomPass.threshold = value));
+        bloomFolder.close();
+        const spacingControl = gui.add(params, 'spacing', 0.01, 0.3).onChange(updateParticleGrid).name('Spacing');
+        const baseParticleSizeControl = gui.add(params, 'baseParticleSize', 0.2, 0.6).onChange(updateParticleMaterial).name('Base Particle Size');
+        const brightnessMultiplierControl = gui.add(params, 'brightnessMultiplier', 1, 3.0).name('Brightness Intensity');
+        const extrusionDirectionControl = gui.add(params, 'extrusionDirection', -1, 1).name('Extrusion Direction').step(0.01);
+        const dampingFactorControl = gui.add(params, 'dampingFactor', 0.01, 0.5).name('Damping (Fluidity)').step(0.01);
+        const maxExtrusionHeightControl = gui.add(params, 'maxExtrusionHeight', 1, 50).name('Max Extrusion Height');
+        gui.add(params, 'invertLightDepth').name('Invert Light Depth');
+        gui.add(params, 'showStats').name('Show Stats').onChange(val => {
+          stats.dom.style.display = val ? 'block' : 'none';
+        });
+        gui.add(params, 'fullscreen').name('Toggle Fullscreen');
+
+        // Store the controls that can be randomized
+        const controllableControls = [
+          spacingControl,
+          baseParticleSizeControl,
+          brightnessMultiplierControl,
+          extrusionDirectionControl,
+          dampingFactorControl,
+          maxExtrusionHeightControl
+        ];
+
+        // Function to randomize specific parameters
+        params.randomize = () => {
+          controllableControls.forEach(control => {
+            const min = control.__min;
+            const max = control.__max;
+            const step = control.__step; // Get the step for accurate randomization
+
+            if (min !== undefined && max !== undefined) {
+              let newValue;
+              if (step !== undefined) {
+                // Ensure the new value aligns with the step
+                newValue = Math.round((min + Math.random() * (max - min)) / step) * step;
+              } else {
+                newValue = min + Math.random() * (max - min);
+              }
+              control.setValue(newValue);
+            }
+          });
+        };
+
+        // Add the randomize button to dat.GUI
+        gui.add(params, 'randomize').name('Randomize Parameters or Double Click');
+
+        window.addEventListener('resize', onWindowResize);
+
+        // --- Double-click event listener for the scene ---
+        renderer.domElement.addEventListener('dblclick', () => {
+          params.randomize();
+        });
+      }
+
+      function initFaceTracking(videoElement) {
+        const faceMesh = new FaceMesh({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+        faceMesh.setOptions({
+          maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+        });
+        faceMesh.onResults(() => {});
+        const camera = new Camera(videoElement, {
+          onFrame: async () => { await faceMesh.send({ image: videoElement }); },
+          width: 640, height: 480
+        });
+        camera.start();
+      }
+
+      function updateParticleGrid() {
+        for (let i = 0; i < cols * rows; i++) {
+          const x = i % cols;
+          const y = Math.floor(i / cols);
+          positions[i * 3 + 0] = (x - cols / 2) * params.spacing;
+          positions[i * 3 + 1] = (y - rows / 2) * params.spacing;
+        }
+        particles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      function updateParticleMaterial() {
+        // The material's size is already linked to params.baseParticleSize
+        // through the attribute and shader. So, no direct update here.
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function animate() {
+        stats.begin();
+        requestAnimationFrame(animate);
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          videoCtx.save();
+          videoCtx.scale(1, -1);
+          videoCtx.drawImage(video, 0, -rows, cols, rows);
+          videoCtx.restore();
+          const pixels = videoCtx.getImageData(0, 0, cols, rows).data;
+          const globalZOffset = - (params.maxExtrusionHeight / 2) * params.extrusionDirection;
+
+          for (let i = 0; i < cols * rows; i++) {
+            const x = i % cols;
+            const y = Math.floor(i / cols);
+            const pixelIndex = (y * cols + x) * 4;
+
+            const r = pixels[pixelIndex];
+            const g = pixels[pixelIndex + 1];
+            const b = pixels[pixelIndex + 2];
+
+            let brightness = ((r + g + b) / 3) / 255 * params.brightnessMultiplier;
+
+            if (params.invertLightDepth) {
+              brightness = 1.0 - brightness;
+            }
+
+            const targetZ = brightness * params.maxExtrusionHeight * params.extrusionDirection;
+
+            initialZPositions[i] += (targetZ - initialZPositions[i]) * params.dampingFactor;
+
+            positions[i * 3 + 2] = initialZPositions[i] + globalZOffset;
+
+            colors[i * 3 + 0] = r / 255;
+            colors[i * 3 + 1] = g / 255;
+            colors[i * 3 + 2] = b / 255;
+
+            sizes[i] = params.baseParticleSize + (brightness * params.baseParticleSize * 2);
+            sizes[i] = Math.max(0.01, Math.min(params.baseParticleSize * 5, sizes[i]));
+          }
+
+
+          particles.geometry.attributes.position.needsUpdate = true;
+          particles.geometry.attributes.color.needsUpdate = true;
+          particles.geometry.attributes.aSize.needsUpdate = true;
+        }
+        controls.update();
+        renderer.render(scene, camera);
+                composer.render(scene, camera);
+
+        stats.end();
+      }
+
+
+      function setupPortfolioInvite() {
+        const inviteDiv = document.createElement('div');
+        inviteDiv.id = 'moreProjectsInvite';
+        inviteDiv.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: rgba(0, 0, 0, 0.8); /* A bit darker for pop */
+        color: white;
+        padding: 12px 18px; /* Slightly bigger padding */
+        border-radius: 10px; /* More rounded corners, LA style! */
+        font-family: 'Helvetica Neue', Arial, sans-serif; /* A bit more modern font */
+        font-size: 15px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4); /* Stronger shadow */
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+        cursor: pointer;
+        text-align: center;
+        line-height: 1.4; /* Better readability */
+        border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+    `;
+        
+  
+        document.body.appendChild(inviteDiv);
+
+        setTimeout(() => {
+          inviteDiv.style.opacity = 1;
+        }, 5000); 
+
+        inviteDiv.addEventListener('click', () => {
+          inviteDiv.style.opacity = 0;
+          setTimeout(() => inviteDiv.remove(), 1000);
+        });
+      }
+
+      setupPortfolioInvite()
+
+    </script>
+  </body>
+</html>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Smartphone Design</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e0e0e0;
+        }
+
+        /* Phone Container */
+        .phone {
+            position: relative;
+            width: 240px;
+            height: 480px;
+            background: linear-gradient(145deg, #BEB8AF, #AFA69D);
+            border-radius: 15px;
+            border: 2px solid #999;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            box-shadow: 8px 8px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        /* Camera Section */
+        .camera-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .camera {
+            width: 38px;
+            height: 38px;
+            background: black;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            border: 2px solid #333;
+        }
+
+        .small-camera {
+            width: 14px;
+            height: 14px;
+            background: black;
+            border-radius: 50%;
+            border: 2px solid #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            margin-left: 10px;
+        }
+
+        /* Extra Camera Spacing */
+        .dual-camera {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+        
+
+        /* Side Button (for power button realism) */
+        .side-button {
+            position: absolute;
+            right: -2px;
+            top: 120px;
+            width: 4px;
+            height: 80px;
+            background: #888;
+            border-radius: 2px;
+            box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone">
+        <div class="stylus"></div>
+        <div class="camera-container">
+            <div class="camera"></div>
+            <div class="camera"></div>
+            <div class="camera"></div>
+            <div class="dual-camera">
+                <div class="small-camera"></div>
+                <div class="small-camera"></div>
+            </div>
+        </div>
+        <div class="side-button"></div>
+    </div>
+
+</body>
+</html>

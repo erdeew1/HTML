@@ -1,0 +1,58 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+}
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.links {
+  position: absolute;
+  list-style: none;
+  width: 180px;
+  bottom: 40px;
+  right: 20px;
+  padding: 0;
+  margin: 0;
+}
+
+.links li {
+  border-bottom: #222 1px solid;
+  border-bottom: rgba(255,255,255,0.1) 1px solid;
+}
+
+.links li a {
+  transition: opacity 0.2s ease-out;
+  -webkit-font-smoothing: subpixel-antialiased;
+  font-family: 'Dosis', sans-serif;
+  text-transform: uppercase;
+  text-align: right;
+  padding: 0.25em 0;
+  letter-spacing: 2px;
+  font-weight: 200;
+  font-size: 12px;
+  display: block;
+  width: 100%;
+  opacity: 0.4;
+  color: #FFF;
+}
+
+.links li a:hover {
+  opacity: 0.8;
+}
+
+.links li .who:before {
+  opacity: 0.5;
+  content: '@';
+  float: left;
+}
+
+.links li .blog:before {
+  opacity: 0.5;
+  content: '</>';
+  float: left;
+}

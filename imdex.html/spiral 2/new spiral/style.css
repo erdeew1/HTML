@@ -1,0 +1,120 @@
+:root {
+  --inner-diameter: min(50vmin, 400px);
+  --inner-radian: calc(var(--inner-diameter) / 2);
+  --circle-diameter: calc(var(--inner-diameter) * 0.45);
+  --circle-radian: calc(var(--circle-diameter) / 2);
+  --circle-count: 30;
+  --circle-rotate: calc(360deg / var(--circle-count));
+  --scene-size: calc(var(--inner-diameter) + var(--circle-diameter) * 1.5);
+  --bg-color: black;
+  --fg-color: lime;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  display: grid;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-color);
+  color: var(--fg-color);
+}
+
+figure {
+  position: relative;
+  margin: auto;
+  width: var(--scene-size);
+  aspect-ratio: 1;
+  perspective: 2000px;
+}
+
+.torus {
+  --rot-x: -0.5;
+  --rot-y: -1;
+  --rot-z: 0;
+  --anim-dur: 10s;
+  display: grid;
+  place-items: center;
+  width: var(--scene-size);
+  aspect-ratio: 1;
+  transform-style: preserve-3d;
+  animation: rotate var(--anim-dur) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .torus {
+    animation-delay: -2.5s;
+    animation-play-state: paused;
+    
+  }
+}
+
+.torus > * {
+  grid-area: 1/1;
+  aspect-ratio: 1;
+  border: solid 1px currentColor;
+  border-radius: 50%;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate3d(var(--rot-x), var(--rot-y), var(--rot-z), 360deg);
+  }
+}
+
+.circle {
+  width: var(--circle-diameter);
+  transform: rotateY(calc(var(--circle-rotate) * var(--circle-index)))
+    translateX(var(--inner-radian));
+}
+
+.ring {
+  --rot: 90deg;
+  --z: 0;
+  --scale: 1;
+  width: var(--inner-diameter);
+  transform: rotateX(var(--rot)) scale(var(--scale))
+    translateZ(calc(var(--circle-radian) * var(--z)));
+}
+
+.ring:nth-last-of-type(1) {
+  --z: 1;
+}
+
+.ring:nth-last-of-type(2) {
+  --scale: 1.333;
+  --z: 0.666;
+}
+
+.ring:nth-last-of-type(3) {
+  --scale: 1.45;
+  --z: 0;
+}
+
+.ring:nth-last-of-type(4) {
+  --scale: 1.333;
+  --z: -0.666;
+}
+
+.ring:nth-last-of-type(5) {
+  --z: -1;
+}
+
+.ring:nth-last-of-type(6) {
+  --scale: 0.666;
+  --z: -0.666;
+}
+
+.ring:nth-last-of-type(7) {
+  --scale: 0.55;
+  --z: 0;
+}
+
+.ring:nth-last-of-type(8) {
+  --scale: 0.666;
+  --z: 0.666;
+}

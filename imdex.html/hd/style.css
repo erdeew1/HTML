@@ -1,0 +1,72 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body Styling */
+body {
+  background-color: #111;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+
+/* Common Eye Styling */
+.eyes {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Left Eye */
+.left-eye {
+  background-image: url('eyes/e723a50b1ec660b69452ccd523872e66.jpg'); /* Replace with Sharingan image path */
+}
+
+/* Right Eye */
+.right-eye {
+  background-image: url('eyes/e723a50b1ec660b69452ccd523872e66.jpg'); /* Replace with Sharingan image path */
+}
+
+/* Optional: Add some hover effect to make the eyes glow */
+.eyes:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px 5px red;
+  transition: all 0.3s ease;
+}
+
+.container {
+  display: flex;
+  gap: 40px;
+  }
+  .container .eyes {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: block;
+  background-color: #fff;
+  margin: 0 20px;
+  border-radius: 50%;
+  box-shadow: 0 5px 45px rgba(0, 0, 0, 0.2), inset 0 0 15px #f5af19,
+    inset 0 0 25px #f5af19;
+  }
+  .container .eyes::before {
+      content: "";
+      top: 50%;
+      left: 35px;
+      transform: translate(-50%, -50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #000;
+      position: absolute;
+      border: 10px solid skyblue;
+      box-sizing: border-box;
+  }
+
